@@ -1,6 +1,11 @@
+# reddit API things
 import requests.auth
-import json
-import os
+# tts things
+from gtts import gTTS
+# video editor
+from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips
+import random
+from mutagen.mp3 import MP3
 
 with open('secrets_secrets.txt', 'r') as f:
     pw = f.readline().strip()
@@ -34,18 +39,26 @@ headers_get = {
 }
 response2 = requests.get(OAUTH_ENDPOINT + '/r/AmItheAsshole/top/', headers=headers_get, params=params_get)
 json_data = response2.json()
-# appending post data to a json file
-# turn this into a for loop when I do more than one post at a time
-# check to make sure the file is empty. If it's not, add a comma and newline character to the file
-filename = "posts.json"
 
-# read the existing json data
-with open(filename, "r") as posts_data:
-    existing_data = json.load(posts_data)
+# setting up the TTS and saving the audio file
+lang = "en"
+tts_text = json_data['data']['children'][0]['data']['selftext']
+speech = gTTS(text=tts_text, lang=lang, slow=False)
+TTS_filename = "tts.mp3"
+speech.save(TTS_filename)
 
-# append the new data
-existing_data.append(json_data)
+# randomize which part of the background video is used
+TTS_audio = MP3(TTS_filename)
+TTS_audio_time = TTS_audio.info.length
+video_filename = "minecraft_parkour.mp4"
+full_unedited_video = VideoFileClip(video_filename)
+background_video_length = full_unedited_video.duration
+start_time = random.random() * (background_video_length - TTS_audio_time)
 
-# write the updated data back to the file
-with open(filename, "a") as posts_data:
-    json.dump(existing_data, posts_data, indent=4)
+# putting the audio and video together
+edited_clip = VideoFileClip(video_filename).subclip(start_time, start_time + TTS_audio_time)
+audio = AudioFileClip(TTS_filename)
+edited_clip = concatenate_videoclips([edited_clip])
+edited_clip.audio = audio
+final_clip_filename = "final.mp4"
+edited_clip.write_videofile(final_clip_filename)
