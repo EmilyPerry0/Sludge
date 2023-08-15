@@ -1,7 +1,14 @@
 # reddit API things
 import requests.auth
+
 # tts things
 from gtts import gTTS
+
+# putting text onto an image
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+
 # video editor
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips
 import random
@@ -47,10 +54,13 @@ speech = gTTS(text=tts_text, lang=lang, slow=False)
 TTS_filename = "tts.mp3"
 speech.save(TTS_filename)
 
+# creating the images that display the text on screen
+
+
 # randomize which part of the background video is used
 TTS_audio = MP3(TTS_filename)
 TTS_audio_time = TTS_audio.info.length
-video_filename = "minecraft_parkour.mp4"
+video_filename = "basic_assets/minecraft_parkour.mp4"
 full_unedited_video = VideoFileClip(video_filename)
 background_video_length = full_unedited_video.duration
 start_time = random.random() * (background_video_length - TTS_audio_time)
