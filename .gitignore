@@ -45,3 +45,9 @@ Thumbs.db
 .idea
 secrets_secrets.txt
 venv
+
+# Sludge Stuff #
+################
+.mp4
+.png
+.mp3
