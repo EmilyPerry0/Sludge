@@ -48,7 +48,6 @@ venv
 
 # Sludge Stuff #
 ################
-basic_assets/minecraft_parkour.mp4
 *.mp4
 *.png
 *.mp3
