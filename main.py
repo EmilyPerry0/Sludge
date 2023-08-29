@@ -44,9 +44,15 @@ headers_get = {
     'User-Agent': user_agent,
     'Authorization': 'Bearer ' + token_id
 }
+
 response2 = requests.get(OAUTH_ENDPOINT + '/r/AmItheAsshole/top/', headers=headers_get, params=params_get)
-print(response2.json())
-json_data = response2.json()
+print(response2.text)
+if response2.status_code == 200:
+    json_data = response2.json()
+    # Continue processing the JSON data
+else:
+    print(f"API request failed with status code: {response2.status_code}")
+    print(response2.text)  # Print the error response for debugging
 
 # setting up the TTS and saving the audio file
 lang = "en"
