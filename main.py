@@ -3,6 +3,7 @@ import requests.auth
 
 # tts things
 from gtts import gTTS
+from pydub import AudioSegment
 
 # putting text onto an image
 from PIL import Image
@@ -14,58 +15,93 @@ from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, con
 import random
 from mutagen.mp3 import MP3
 
+
+# runs the authentication processes to begin the proper interaction with the reddit API
+# returns the access token granted by the authentication process (or 0 if auth failed)
+def app_auth(client_id, secret_key, user_agent):
+    client_auth = requests.auth.HTTPBasicAuth(client_id, secret_key)
+    data = {
+        'grant_type': 'password',
+        'username': 'Background-Setting-5',
+        'password': pw
+    }
+    headers = {'User-Agent': user_agent}
+
+    # Getting Token Access ID
+    response = requests.post('https://www.reddit.com/api/v1/access_token', auth=client_auth, data=data,
+                             headers=headers)
+    if response.status_code == 200:
+        return response.json()['access_token']
+    else:
+        raise ValueError('The authentication process failed')
+
+
+# grabs a post from a specified subreddit
+# returns the json data of the post that was grabbed
+def grab_post(subreddit, user_agent, token_id):
+    # getting ready for post grabbing
+    oauth_endpoint = 'https://oauth.reddit.com'
+    params_get = {
+        'limit': 1
+    }
+    headers_get = {
+        'User-Agent': user_agent,
+        'Authorization': 'Bearer ' + token_id
+    }
+    # the actual post grabbing, then converting it into json format
+    return requests.get(oauth_endpoint + '/r/' + subreddit + '/top/', headers=headers_get,
+                        params=params_get).json()
+
+
+# takes in some text and turns it into an audio file that speaks the text.
+# the text is also sped up by pydub because gTTS is insanely slow :/ DO THISSSS
+def create_tts_audio(tts_filename, json_data):
+    lang = "en"
+    tts_text = json_data['data']['children'][0]['data']['selftext']
+    speech = gTTS(text=tts_text, lang=lang, slow=False)
+    speech.save(tts_filename)
+
+
+# main code
+# setting up variables
+USER_AGENT = 'Sludge/0.1.0'
+token_id = ''
+SUBREDDIT = 'AmITheAsshole'
+TTS_FILENAME = "tts.mp3"
+
+# read in the secret info that should not be public on my GitHub :)
 with open('secrets_secrets.txt', 'r') as f:
     pw = f.readline().strip()
     CLIENT_ID = f.readline().strip()
     SECRET_KEY = f.readline().strip()
 
-# Authenticate App
-client_auth = requests.auth.HTTPBasicAuth(CLIENT_ID, SECRET_KEY)
-user_agent = 'Sludge/0.0.1'
-data = {
-    'grant_type': 'password',
-    'username': 'Background-Setting-5',
-    'password': pw
-}
-headers = {'User-Agent': user_agent}
+# authenticate the session
+try:
+    TOKEN_ID = app_auth(CLIENT_ID, SECRET_KEY, USER_AGENT)
+except ValueError as err:
+    print(err.args)
+    exit(1)
+except KeyError as err:
+    print('the password was wrong.')
+    exit(2)
 
-# Getting Token Access ID
-response = requests.post('https://www.reddit.com/api/v1/access_token', auth=client_auth, data=data, headers=headers)
-token_id = " "
-if response.status_code == 200:
-    token_id = response.json()['access_token']
+# if we're here then it was an auth success! Let's tell the user.
+print('Authentication Successful!')
 
 # Grab a post
-OAUTH_ENDPOINT = 'https://oauth.reddit.com'
-params_get = {
-    'limit': 1
-}
-headers_get = {
-    'User-Agent': user_agent,
-    'Authorization': 'Bearer ' + token_id
-}
+json_data = grab_post(SUBREDDIT, USER_AGENT, token_id)
 
-response2 = requests.get(OAUTH_ENDPOINT + '/r/AmItheAsshole/top/', headers=headers_get, params=params_get)
-print(response2.text)
-if response2.status_code == 200:
-    json_data = response2.json()
-    # Continue processing the JSON data
-else:
-    print(f"API request failed with status code: {response2.status_code}")
-    print(response2.text)  # Print the error response for debugging
+# if we're here, then post grabbing was successful! Let's tell the user.
+print('Post successfully grabbed from r/' + SUBREDDIT + '!')
 
 # setting up the TTS and saving the audio file
-lang = "en"
-tts_text = json_data['data']['children'][0]['data']['selftext']
-speech = gTTS(text=tts_text, lang=lang, slow=False)
-TTS_filename = "tts.mp3"
-speech.save(TTS_filename)
+create_tts_audio(TTS_FILENAME, json_data)
 
 # creating the images that display the text on screen
 
 
 # randomize which part of the background video is used
-TTS_audio = MP3(TTS_filename)
+TTS_audio = MP3(TTS_FILENAME)
 TTS_audio_time = TTS_audio.info.length
 video_filename = "basic_assets/minecraft_parkour.mp4"
 full_unedited_video = VideoFileClip(video_filename)
@@ -74,7 +110,7 @@ start_time = random.random() * (background_video_length - TTS_audio_time)
 
 # putting the audio and video together
 edited_clip = VideoFileClip(video_filename).subclip(start_time, start_time + TTS_audio_time)
-audio = AudioFileClip(TTS_filename)
+audio = AudioFileClip(TTS_FILENAME)
 edited_clip = concatenate_videoclips([edited_clip])
 edited_clip.audio = audio
 final_clip_filename = "final.mp4"
