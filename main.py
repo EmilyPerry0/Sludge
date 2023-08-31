@@ -17,7 +17,7 @@ from mutagen.mp3 import MP3
 
 
 # runs the authentication processes to begin the proper interaction with the reddit API
-# returns the access token granted by the authentication process (or 0 if auth failed)
+# returns the access token granted by the authentication process (or raises an error if auth failed)
 def app_auth(client_id, secret_key, user_agent):
     client_auth = requests.auth.HTTPBasicAuth(client_id, secret_key)
     data = {
@@ -54,18 +54,21 @@ def grab_post(subreddit, user_agent, token_id):
 
 
 # takes in some text and turns it into an audio file that speaks the text.
-# the text is also sped up by pydub because gTTS is insanely slow :/ DO THISSSS
-def create_tts_audio(tts_filename, json_data):
-    lang = "en"
+# the speech is also sped up by pydub because gTTS is insanely slow :/
+def create_full_tts_audio(tts_filename, json_data):
+    # making the base speech
     tts_text = json_data['data']['children'][0]['data']['selftext']
-    speech = gTTS(text=tts_text, lang=lang, slow=False)
+    speech = gTTS(text=tts_text, lang='en', slow=False)
     speech.save(tts_filename)
+
+    # speeding up the base speech and re-saving it with the same name
+    AudioSegment.from_mp3(tts_filename).speedup(1.35).export(tts_filename, format="mp3")
 
 
 # main code
 # setting up variables
-USER_AGENT = 'Sludge/0.1.0'
-token_id = ''
+USER_AGENT = 'Sludge/0.1.1'
+TOKEN_ID = ''
 SUBREDDIT = 'AmITheAsshole'
 TTS_FILENAME = "tts.mp3"
 
@@ -81,21 +84,18 @@ try:
 except ValueError as err:
     print(err.args)
     exit(1)
-except KeyError as err:
-    print('the password was wrong.')
-    exit(2)
 
 # if we're here then it was an auth success! Let's tell the user.
 print('Authentication Successful!')
 
 # Grab a post
-json_data = grab_post(SUBREDDIT, USER_AGENT, token_id)
+json_data = grab_post(SUBREDDIT, USER_AGENT, TOKEN_ID)
 
 # if we're here, then post grabbing was successful! Let's tell the user.
 print('Post successfully grabbed from r/' + SUBREDDIT + '!')
 
 # setting up the TTS and saving the audio file
-create_tts_audio(TTS_FILENAME, json_data)
+create_full_tts_audio(TTS_FILENAME, json_data)
 
 # creating the images that display the text on screen
 
@@ -113,5 +113,5 @@ edited_clip = VideoFileClip(video_filename).subclip(start_time, start_time + TTS
 audio = AudioFileClip(TTS_FILENAME)
 edited_clip = concatenate_videoclips([edited_clip])
 edited_clip.audio = audio
-final_clip_filename = "final.mp4"
+final_clip_filename = "OUTPUT/final.mp4"
 edited_clip.write_videofile(final_clip_filename)
