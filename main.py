@@ -15,54 +15,8 @@ from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, con
 import random
 from mutagen.mp3 import MP3
 
-
-# runs the authentication processes to begin the proper interaction with the reddit API
-# returns the access token granted by the authentication process (or raises an error if auth failed)
-def app_auth(client_id, secret_key, user_agent):
-    client_auth = requests.auth.HTTPBasicAuth(client_id, secret_key)
-    data = {
-        'grant_type': 'password',
-        'username': 'Background-Setting-5',
-        'password': pw
-    }
-    headers = {'User-Agent': user_agent}
-
-    # Getting Token Access ID
-    response = requests.post('https://www.reddit.com/api/v1/access_token', auth=client_auth, data=data,
-                             headers=headers)
-    if response.status_code == 200:
-        return response.json()['access_token']
-    else:
-        raise ValueError('The authentication process failed')
-
-
-# grabs a post from a specified subreddit
-# returns the json data of the post that was grabbed
-def grab_post(subreddit, user_agent, token_id):
-    # getting ready for post grabbing
-    oauth_endpoint = 'https://oauth.reddit.com'
-    params_get = {
-        'limit': 1
-    }
-    headers_get = {
-        'User-Agent': user_agent,
-        'Authorization': 'Bearer ' + token_id
-    }
-    # the actual post grabbing, then converting it into json format
-    return requests.get(oauth_endpoint + '/r/' + subreddit + '/top/', headers=headers_get,
-                        params=params_get).json()
-
-
-# takes in some text and turns it into an audio file that speaks the text.
-# the speech is also sped up by pydub because gTTS is insanely slow :/
-def create_full_tts_audio(tts_filename, json_data):
-    # making the base speech
-    tts_text = json_data['data']['children'][0]['data']['selftext']
-    speech = gTTS(text=tts_text, lang='en', slow=False)
-    speech.save(tts_filename)
-
-    # speeding up the base speech and re-saving it with the same name
-    AudioSegment.from_mp3(tts_filename).speedup(1.35).export(tts_filename, format="mp3")
+# all the functions
+import sludge_functions as sludge
 
 
 # main code
@@ -80,7 +34,7 @@ with open('secrets_secrets.txt', 'r') as f:
 
 # authenticate the session
 try:
-    TOKEN_ID = app_auth(CLIENT_ID, SECRET_KEY, USER_AGENT)
+    TOKEN_ID = sludge.app_auth(CLIENT_ID, SECRET_KEY, pw, USER_AGENT)
 except ValueError as err:
     print(err.args)
     exit(1)
@@ -89,13 +43,19 @@ except ValueError as err:
 print('Authentication Successful!')
 
 # Grab a post
-json_data = grab_post(SUBREDDIT, USER_AGENT, TOKEN_ID)
+json_data = sludge.grab_post(SUBREDDIT, USER_AGENT, TOKEN_ID)
 
 # if we're here, then post grabbing was successful! Let's tell the user.
 print('Post successfully grabbed from r/' + SUBREDDIT + '!')
 
 # setting up the TTS and saving the audio file
-create_full_tts_audio(TTS_FILENAME, json_data)
+# create_full_tts_audio(TTS_FILENAME, json_data)
+
+# split the post text into sections of four words
+word_list = sludge.split_post_text(json_data, 4)
+# testing the function
+for x in word_list:
+    print(x)
 
 # creating the images that display the text on screen
 
